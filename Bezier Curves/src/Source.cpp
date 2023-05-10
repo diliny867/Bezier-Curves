@@ -7,6 +7,7 @@
 
 #include <iostream>
 #include <vector>
+#include <functional>
 
 #include "../include/VBO.h"
 #include "../include/VAO.h"
@@ -19,16 +20,97 @@ void processInput(GLFWwindow* window);
 void mouse_cursor_callback(GLFWwindow* window, double xpos, double ypos);
 void mouse_scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
+std::function<void()> shader_viewpoint_callback;
 
 float SCR_WIDTH = 800;
 float SCR_HEIGHT = 600;
 
-float lastX = SCR_WIDTH / 2.0f;
-float lastY = SCR_HEIGHT / 2.0f;
-bool firstMouse = true;
+class Mouse {
+public:
+    Mouse(const float x,const float y):pos({x,y}){}
+    Mouse():Mouse(0,0){}
+    glm::vec2 pos;
+    bool leftPressed = false;
+    bool rightPressed = false;
+    bool wheelScrolled = false;
+    bool firstInput = true;
+};
+Mouse mouse(SCR_WIDTH/2.0f,SCR_HEIGHT/2.0f);
 
-BezierCurve bezierCurve;
-GLuint bezier_vbo;
+//BezierCurve bezierCurve;
+//GLuint bezier_vbo;
+
+class BezierCurveVisualizer {
+	GLuint bc_vbo;
+	GLuint bc_vao;
+	GLuint points_vbo;
+	GLuint points_vao;
+public:
+	BezierCurve bezierCurve;
+	void Init() {
+        bezierCurve.points.push_back({100,450});
+        bezierCurve.points.push_back({150,480});
+        bezierCurve.points.push_back({210,450});
+        bezierCurve.points.push_back({040,200});
+        bezierCurve.points.push_back({340,490});
+        bezierCurve.RecalculateLine();
+
+        VBO::generate(bc_vbo,sizeof(glm::vec2)*bezierCurve.linePoints.size(),bezierCurve.linePoints.data(),GL_STATIC_DRAW);
+        VBO::bind(bc_vbo);
+        VAO::generate(bc_vao);
+        VAO::bind(bc_vao);
+        VAO::addAttrib(bc_vao,0,2,GL_FLOAT,GL_FALSE,2 * sizeof(float),(void*)0);
+
+        VBO::generate(points_vbo,sizeof(glm::vec2)*bezierCurve.points.size(),bezierCurve.points.data(),GL_STATIC_DRAW);
+        VBO::bind(points_vbo);
+        VAO::generate(points_vao);
+        VAO::bind(points_vao);
+        VAO::addAttrib(points_vao,0,2,GL_FLOAT,GL_FALSE,2 * sizeof(float),(void*)0);
+    }
+    void Update() {
+        bezierCurve.RecalculateLine();
+        VBO::setData(bc_vbo,sizeof(glm::vec2)*bezierCurve.linePoints.size(),bezierCurve.linePoints.data(),GL_STATIC_DRAW);
+    }
+    void Draw(const Shader& lineShader,const Shader& pointShader) {
+        VAO::bind(points_vao);
+        pointShader.use();
+        glPointSize(5);
+        glDrawArrays(GL_POINTS,0,bezierCurve.points.size());
+        
+        VAO::bind(bc_vbo);
+        lineShader.use();
+        glDrawArrays(GL_LINE_STRIP,0,bezierCurve.linePoints.size());
+    }
+
+    glm::vec2* capturedPoint = nullptr;
+    void HandleMouse() {
+        if(mouse.leftPressed) {
+	        if(capturedPoint!=nullptr) {
+                capturedPoint->x = mouse.pos.x;
+                capturedPoint->y = mouse.pos.y;
+	        }
+        }else {
+            capturedPoint=nullptr;
+        }
+    }
+    float pointCaptureDistance = 20.0f;
+    void CheckCapturePoint() {
+        int closestPoint = 0;
+        float closestDist = FLT_MAX;
+        for(int i=0;i<bezierCurve.points.size();i++) {
+            const float dist = glm::distance(mouse.pos,bezierCurve.points[i]);
+            //std::cout<<bezierCurve.points[i].y<<'\n';
+            if(dist < closestDist) {
+                closestDist = dist;
+                closestPoint = i;
+            }
+        }
+        if(closestDist<=pointCaptureDistance) {
+            capturedPoint = &bezierCurve.points[closestPoint];
+        }
+    }
+};
+BezierCurveVisualizer bcVisualizer;
 
 int main() {
     // glfw: initialize and configure
@@ -68,20 +150,36 @@ int main() {
     glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
 
     Shader lineShader("resources/shaders/lineShader_vs.glsl", "resources/shaders/lineShader_fs.glsl");
+    Shader pointShader("resources/shaders/point_vs.glsl", "resources/shaders/point_fs.glsl");
+    glm::vec2 res ={SCR_WIDTH,SCR_HEIGHT};
+    lineShader.use();
+    lineShader.setVec2("res",res);
+    pointShader.use();
+    pointShader.setVec2("res",res);
 
-    bezierCurve.points.push_back({100/800.0f*2.0f-1.0f,450/600.0f*2.0f-1.0f});
-    bezierCurve.points.push_back({150/800.0f*2.0f-1.0f,480/600.0f*2.0f-1.0f});
-    bezierCurve.points.push_back({210/800.0f*2.0f-1.0f,450/600.0f*2.0f-1.0f});
-    bezierCurve.points.push_back({040/800.0f*2.0f-1.0f,200/600.0f*2.0f-1.0f});
-    bezierCurve.points.push_back({340/800.0f*2.0f-1.0f,490/600.0f*2.0f-1.0f});
-    bezierCurve.RecalculateLine();
+    shader_viewpoint_callback = [&]() {
+        glm::vec2 res ={SCR_WIDTH,SCR_HEIGHT};
+        lineShader.use();
+        lineShader.setVec2("res",res);
+        pointShader.use();
+        pointShader.setVec2("res",res);
+    };
 
-    VBO::generate(bezier_vbo, sizeof(glm::vec2)*bezierCurve.linePoints.size(),bezierCurve.linePoints.data(), GL_STATIC_DRAW);
-    VBO::bind(bezier_vbo);
-    GLuint bezier_vao;
-    VAO::generate(bezier_vao);
-    VAO::bind(bezier_vao);
-    VAO::addAttrib(bezier_vao, 0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+    bcVisualizer.Init();
+
+    //bezierCurve.points.push_back({100/800.0f*2.0f-1.0f,450/600.0f*2.0f-1.0f});
+    //bezierCurve.points.push_back({150/800.0f*2.0f-1.0f,480/600.0f*2.0f-1.0f});
+    //bezierCurve.points.push_back({210/800.0f*2.0f-1.0f,450/600.0f*2.0f-1.0f});
+    //bezierCurve.points.push_back({040/800.0f*2.0f-1.0f,200/600.0f*2.0f-1.0f});
+    //bezierCurve.points.push_back({340/800.0f*2.0f-1.0f,490/600.0f*2.0f-1.0f});
+    //bezierCurve.RecalculateLine();
+    //
+    //VBO::generate(bezier_vbo, sizeof(glm::vec2)*bezierCurve.linePoints.size(),bezierCurve.linePoints.data(), GL_STATIC_DRAW);
+    //VBO::bind(bezier_vbo);
+    //GLuint bezier_vao;
+    //VAO::generate(bezier_vao);
+    //VAO::bind(bezier_vao);
+    //VAO::addAttrib(bezier_vao, 0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
     lineShader.use();
 
     while (!glfwWindowShouldClose(window)) {
@@ -90,12 +188,12 @@ int main() {
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        glDrawArrays(GL_LINE_STRIP, 0,bezierCurve.linePoints.size());
+        bcVisualizer.Draw(lineShader,pointShader);
+        bcVisualizer.HandleMouse();
 
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
-
 
     glfwTerminate();
     return 0;
@@ -111,28 +209,36 @@ void mouse_cursor_callback(GLFWwindow* window, double xpos, double ypos) {
     float xposIn = static_cast<float>(xpos);
     float yposIn = static_cast<float>(ypos);
 
-    if (firstMouse) {
-        lastX = xposIn;
-        lastY = yposIn;
-        firstMouse = false;
+    if (mouse.firstInput) {
+        mouse.pos.x = xposIn;
+        mouse.pos.y = yposIn;
+        mouse.firstInput = false;
     }
 
 
-    lastX = xposIn;
-    lastY = yposIn;
+    mouse.pos.x = xposIn;
+    mouse.pos.y = yposIn;
 }
 
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
-    //if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
-    //}
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+        mouse.leftPressed = true;
+        bcVisualizer.CheckCapturePoint();
+    }
+    if(button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE) {
+        mouse.leftPressed = false;
+    }
 }
 
 void mouse_scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
-    if(glfwGetKey(window,GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
-        bezierCurve.SetPrecision(bezierCurve.GetPrecision()*(1+0.1f*yoffset));
-        //std::cout<<bezierCurve.GetPrecision()<<std::endl;
-        bezierCurve.RecalculateLine();
-        VBO::setData(bezier_vbo,sizeof(glm::vec2)*bezierCurve.linePoints.size(),bezierCurve.linePoints.data(),GL_STATIC_DRAW);
+    if(glfwGetKey(window,GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
+        bcVisualizer.bezierCurve.SetPrecision(bcVisualizer.bezierCurve.GetPrecision()*(1+0.1f*yoffset));
+        bcVisualizer.bezierCurve.RecalculateLine();
+
+        //bezierCurve.SetPrecision(bezierCurve.GetPrecision()*(1+0.1f*yoffset));
+        ////std::cout<<bezierCurve.GetPrecision()<<std::endl;
+        //bezierCurve.RecalculateLine();
+        //VBO::setData(bezier_vbo,sizeof(glm::vec2)*bezierCurve.linePoints.size(),bezierCurve.linePoints.data(),GL_STATIC_DRAW);
     }
 }
 
@@ -140,4 +246,5 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 	SCR_WIDTH = width;
 	SCR_HEIGHT = height;
 	glViewport(0, 0, width, height); //0,0 - left bottom
+    shader_viewpoint_callback();
 }
