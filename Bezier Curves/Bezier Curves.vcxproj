@@ -25,6 +25,9 @@
     <ClCompile Include="src\VAO.cpp" />
     <ClCompile Include="src\VBO.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include\BezierCurve.h" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>

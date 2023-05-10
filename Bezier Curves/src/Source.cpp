@@ -12,6 +12,8 @@
 #include "../include/VAO.h"
 #include "../include/Shader.h"
 
+#include "../include/BezierCurve.h"
+
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow* window);
 void mouse_cursor_callback(GLFWwindow* window, double xpos, double ypos);
@@ -25,12 +27,7 @@ float lastX = SCR_WIDTH / 2.0f;
 float lastY = SCR_HEIGHT / 2.0f;
 bool firstMouse = true;
 
-glm::vec2 Lerp(const glm::vec2 p1, const glm::vec2 p2, const float t) {
-    glm::vec2 ans;
-    ans.x = p1.x + (p2.x-p1.x)*t;
-    ans.y = p1.y+(ans.x-p1.x)*((p2.y-p1.y)/(p2.x-p1.x));
-    return ans;
-}
+
 
 int main() {
     // glfw: initialize and configure
@@ -71,19 +68,16 @@ int main() {
 
     Shader lineShader("resources/shaders/lineShader_vs.glsl", "resources/shaders/lineShader_fs.glsl");
 
-    std::vector<glm::vec2> points;
-    points.push_back({100/SCR_WIDTH*2.0f-1.0f,450/SCR_HEIGHT*2.0f-1.0f});
-    points.push_back({150/SCR_WIDTH*2.0f-1.0f,480/SCR_HEIGHT*2.0f-1.0f});
-    points.push_back({210/SCR_WIDTH*2.0f-1.0f,450/SCR_HEIGHT*2.0f-1.0f});
-    
-    float precision = 0.1f;
-    std::vector<glm::vec2> linePoints;
-    for(float t=0;t<1;t+=precision) {
-        linePoints.push_back(Lerp(Lerp(points[0],points[1],t),Lerp(points[1],points[2],t),t));
-    }
-    
+    BezierCurve bezierCurve;
+    bezierCurve.points.push_back({100/800.0f*2.0f-1.0f,450/600.0f*2.0f-1.0f});
+    bezierCurve.points.push_back({150/800.0f*2.0f-1.0f,480/600.0f*2.0f-1.0f});
+    bezierCurve.points.push_back({210/800.0f*2.0f-1.0f,450/600.0f*2.0f-1.0f});
+    bezierCurve.points.push_back({040/800.0f*2.0f-1.0f,200/600.0f*2.0f-1.0f});
+    bezierCurve.points.push_back({340/800.0f*2.0f-1.0f,490/600.0f*2.0f-1.0f});
+    bezierCurve.RecalculateLine();
+
     GLuint vbo;
-    VBO::generate(vbo, sizeof(glm::vec2)*linePoints.size(), linePoints.data(), GL_STATIC_DRAW);
+    VBO::generate(vbo, sizeof(glm::vec2)*bezierCurve.linePoints.size(),bezierCurve.linePoints.data(), GL_STATIC_DRAW);
     VBO::bind(vbo);
     GLuint vao;
     VAO::generate(vao);
@@ -97,7 +91,7 @@ int main() {
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        glDrawArrays(GL_LINE_STRIP, 0, linePoints.size());
+        glDrawArrays(GL_LINE_STRIP, 0,bezierCurve.linePoints.size());
 
         glfwSwapBuffers(window);
         glfwPollEvents();
