@@ -16,7 +16,7 @@ glm::vec2 Lerp(const glm::vec2 p1,const glm::vec2 p2,const float t) {
 class BezierCurve {
 private:
     glm::vec2 calcLinePoint(const float t) {
-        if(points.size()<=2) {
+        if(points.size()<2) {
             return {0,0};
         }
         std::vector<glm::vec2> tmp_points(points);
@@ -30,16 +30,15 @@ private:
     }
     float precision = 0.01f;
 public:
-	
 	std::vector<glm::vec2> points;
 	std::vector<glm::vec2> linePoints;
     BezierCurve() {
         linePoints.clear();
-        linePoints.resize(1.0f/precision);
+        linePoints.resize(1.0f/precision+1);
     }
     void RecalculateLine() {
         float t = 0;
-        for(int i=0;i<int(1.0f/precision);i++) {
+        for(int i=0;i<linePoints.size();i++) {
             linePoints[i] = calcLinePoint(t);
             t+=precision;
         }
@@ -47,6 +46,9 @@ public:
     void SetPrecision(const float p){
         precision = p;
         linePoints.clear();
-        linePoints.resize(1.0f/precision);
+        linePoints.resize(1.0f/precision+1);
+    }
+    float GetPrecision() const {
+        return precision;
     }
 };

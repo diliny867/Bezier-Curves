@@ -27,7 +27,8 @@ float lastX = SCR_WIDTH / 2.0f;
 float lastY = SCR_HEIGHT / 2.0f;
 bool firstMouse = true;
 
-
+BezierCurve bezierCurve;
+GLuint bezier_vbo;
 
 int main() {
     // glfw: initialize and configure
@@ -68,7 +69,6 @@ int main() {
 
     Shader lineShader("resources/shaders/lineShader_vs.glsl", "resources/shaders/lineShader_fs.glsl");
 
-    BezierCurve bezierCurve;
     bezierCurve.points.push_back({100/800.0f*2.0f-1.0f,450/600.0f*2.0f-1.0f});
     bezierCurve.points.push_back({150/800.0f*2.0f-1.0f,480/600.0f*2.0f-1.0f});
     bezierCurve.points.push_back({210/800.0f*2.0f-1.0f,450/600.0f*2.0f-1.0f});
@@ -76,13 +76,12 @@ int main() {
     bezierCurve.points.push_back({340/800.0f*2.0f-1.0f,490/600.0f*2.0f-1.0f});
     bezierCurve.RecalculateLine();
 
-    GLuint vbo;
-    VBO::generate(vbo, sizeof(glm::vec2)*bezierCurve.linePoints.size(),bezierCurve.linePoints.data(), GL_STATIC_DRAW);
-    VBO::bind(vbo);
-    GLuint vao;
-    VAO::generate(vao);
-    VAO::bind(vao);
-    VAO::addAttrib(vao, 0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+    VBO::generate(bezier_vbo, sizeof(glm::vec2)*bezierCurve.linePoints.size(),bezierCurve.linePoints.data(), GL_STATIC_DRAW);
+    VBO::bind(bezier_vbo);
+    GLuint bezier_vao;
+    VAO::generate(bezier_vao);
+    VAO::bind(bezier_vao);
+    VAO::addAttrib(bezier_vao, 0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
     lineShader.use();
 
     while (!glfwWindowShouldClose(window)) {
@@ -129,7 +128,12 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 }
 
 void mouse_scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
-
+    if(glfwGetKey(window,GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
+        bezierCurve.SetPrecision(bezierCurve.GetPrecision()*(1+0.1f*yoffset));
+        //std::cout<<bezierCurve.GetPrecision()<<std::endl;
+        bezierCurve.RecalculateLine();
+        VBO::setData(bezier_vbo,sizeof(glm::vec2)*bezierCurve.linePoints.size(),bezierCurve.linePoints.data(),GL_STATIC_DRAW);
+    }
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
