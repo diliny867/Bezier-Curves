@@ -64,9 +64,10 @@ public:
         VAO::bind(points_vao);
         VAO::addAttrib(points_vao,0,2,GL_FLOAT,GL_FALSE,2 * sizeof(float),(void*)0);
     }
-    void Update() {
+    void UpdateCurve() {
         bezierCurve.RecalculateLine();
         VBO::setData(bc_vbo,sizeof(glm::vec2)*bezierCurve.linePoints.size(),bezierCurve.linePoints.data(),GL_STATIC_DRAW);
+        VBO::setData(points_vbo,sizeof(glm::vec2)*bezierCurve.points.size(),bezierCurve.points.data(),GL_STATIC_DRAW);
     }
     void Draw(const Shader& lineShader,const Shader& pointShader) const {
         VAO::bind(points_vao);
@@ -83,8 +84,8 @@ public:
     void HandleMouse() {
         if(mouse.leftPressed) {
 	        if(capturedPoint!=nullptr) {
-                capturedPoint->x = mouse.pos.x;
-                capturedPoint->y = mouse.pos.y;
+	        	*capturedPoint = glm::clamp(mouse.pos, {0,0}, glm::vec2(SCR_WIDTH,SCR_HEIGHT)) ;
+                UpdateCurve();
 	        }
         }else {
             capturedPoint=nullptr;
@@ -96,7 +97,6 @@ public:
         float closestDist = FLT_MAX;
         for(int i=0;i<bezierCurve.points.size();i++) {
             const float dist = glm::distance(mouse.pos,bezierCurve.points[i]);
-            //std::cout<<bezierCurve.points[i].y<<'\n';
             if(dist < closestDist) {
                 closestDist = dist;
                 closestPoint = i;
@@ -108,6 +108,8 @@ public:
     }
 };
 BezierCurveVisualizer bcVisualizer;
+
+glm::mat4 projection = glm::ortho(0.0f,SCR_WIDTH,SCR_HEIGHT,0.0f);
 
 int main() {
     // glfw: initialize and configure
@@ -146,25 +148,29 @@ int main() {
     glEnable(GL_LINE_SMOOTH);
     glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
 
+    glm::mat4 model = glm::mat4(1.0f);
+
     Shader lineShader("resources/shaders/lineShader_vs.glsl", "resources/shaders/lineShader_fs.glsl");
     Shader pointShader("resources/shaders/point_vs.glsl", "resources/shaders/point_fs.glsl");
-    glm::vec2 res ={SCR_WIDTH,SCR_HEIGHT};
     lineShader.use();
-    lineShader.setVec2("res",res);
+    lineShader.setVec2("res",SCR_WIDTH,SCR_HEIGHT);
+    lineShader.setMat4("projection",projection);
+    lineShader.setMat4("model",model);
     pointShader.use();
-    pointShader.setVec2("res",res);
+    pointShader.setVec2("res",SCR_WIDTH,SCR_HEIGHT);
+    pointShader.setMat4("projection",projection);
+    pointShader.setMat4("model",model);
 
     shader_viewpoint_callback = [&]() {
-        glm::vec2 res ={SCR_WIDTH,SCR_HEIGHT};
         lineShader.use();
-        lineShader.setVec2("res",res);
+        lineShader.setVec2("res",SCR_WIDTH,SCR_HEIGHT);
+        lineShader.setMat4("projection",projection);
         pointShader.use();
-        pointShader.setVec2("res",res);
+        pointShader.setVec2("res",SCR_WIDTH,SCR_HEIGHT);
+        pointShader.setMat4("projection",projection);
     };
 
     bcVisualizer.Init();
-
-    lineShader.use();
 
     while (!glfwWindowShouldClose(window)) {
         processInput(window);// input
@@ -218,6 +224,7 @@ void mouse_scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
     if(glfwGetKey(window,GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
         bcVisualizer.bezierCurve.SetPrecision(bcVisualizer.bezierCurve.GetPrecision()*(1+0.1f*yoffset));
         bcVisualizer.bezierCurve.RecalculateLine();
+        bcVisualizer.UpdateCurve();
     }
 }
 
@@ -225,5 +232,6 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 	SCR_WIDTH = width;
 	SCR_HEIGHT = height;
 	glViewport(0, 0, width, height); //0,0 - left bottom
+    projection = glm::ortho(0.0f,SCR_WIDTH,SCR_HEIGHT,0.0f);
     shader_viewpoint_callback();
 }
