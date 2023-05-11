@@ -12,11 +12,13 @@
 #include "../include/VBO.h"
 #include "../include/VAO.h"
 #include "../include/Shader.h"
+#include "../include/Time.h"
 
 #include "../include/BezierCurve.h"
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow* window);
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
 void mouse_cursor_callback(GLFWwindow* window, double xpos, double ypos);
 void mouse_scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
@@ -42,6 +44,9 @@ class BezierCurveVisualizer {
 	GLuint bc_vao = 0;
 	GLuint points_vbo = 0;
 	GLuint points_vao = 0;
+	const float pointCaptureDistance = 10.0f;
+    glm::vec2* capturedPoint = nullptr;
+    int capturedPointIndex = 0;
 public:
 	BezierCurve bezierCurve;
 	void Init() {
@@ -79,8 +84,6 @@ public:
         lineShader.use();
         glDrawArrays(GL_LINE_STRIP,0,bezierCurve.linePoints.size());
     }
-
-    glm::vec2* capturedPoint = nullptr;
     void HandleMouse() {
         if(mouse.leftPressed) {
 	        if(capturedPoint!=nullptr) {
@@ -91,7 +94,18 @@ public:
             capturedPoint=nullptr;
         }
     }
-    float pointCaptureDistance = 20.0f;
+    void NewPoint(const glm::vec2 pos) {
+        bezierCurve.points.push_back(pos);
+        capturedPoint = &bezierCurve.points.back();
+        capturedPointIndex = bezierCurve.points.size()-1;
+	}
+    void EraseCapturedPoint() {
+	    if(capturedPoint!=nullptr) {
+            bezierCurve.points.erase(bezierCurve.points.begin()+capturedPointIndex);
+            capturedPoint = nullptr;
+            UpdateCurve();
+	    }
+    }
     void CheckCapturePoint() {
         int closestPoint = 0;
         float closestDist = FLT_MAX;
@@ -103,6 +117,7 @@ public:
             }
         }
         if(closestDist<=pointCaptureDistance) {
+            capturedPointIndex = closestPoint;
             capturedPoint = &bezierCurve.points[closestPoint];
         }
     }
@@ -122,7 +137,7 @@ int main() {
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
 
-    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "OpenGL application", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Bezier Curve Simulator", NULL, NULL);
     if (window == NULL) {
         std::cout << "Failed to create GLFW window" << std::endl;
         glfwTerminate();
@@ -134,7 +149,8 @@ int main() {
     glfwSetCursorPosCallback(window, mouse_cursor_callback);
     glfwSetMouseButtonCallback(window, mouse_button_callback);
     glfwSetScrollCallback(window, mouse_scroll_callback);
-    glfwSwapInterval(0);//VSync
+    glfwSetKeyCallback(window, key_callback);
+    glfwSwapInterval(0);//VSync 
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
     //glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);//capture mouse
 
@@ -147,6 +163,8 @@ int main() {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_LINE_SMOOTH);
     glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
+
+    Time::Init();
 
     glm::mat4 model = glm::mat4(1.0f);
 
@@ -173,7 +191,8 @@ int main() {
     bcVisualizer.Init();
 
     while (!glfwWindowShouldClose(window)) {
-        processInput(window);// input
+        Time::Update();
+        //processInput(window);// input
 
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
@@ -195,6 +214,15 @@ void processInput(GLFWwindow* window) {
         glfwSetWindowShouldClose(window, true);
 }
 
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+	if(key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+        glfwSetWindowShouldClose(window,true);
+	}
+    if(key == GLFW_KEY_DELETE && action == GLFW_PRESS) {
+    	bcVisualizer.EraseCapturedPoint();
+    }
+}
+
 void mouse_cursor_callback(GLFWwindow* window, double xpos, double ypos) {
     float xposIn = static_cast<float>(xpos);
     float yposIn = static_cast<float>(ypos);
@@ -205,15 +233,23 @@ void mouse_cursor_callback(GLFWwindow* window, double xpos, double ypos) {
         mouse.firstInput = false;
     }
 
-
     mouse.pos.x = xposIn;
     mouse.pos.y = yposIn;
 }
+
+double doubleClickSpeed = 0.300; //sec
+double lastClick = 0;
 
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
         mouse.leftPressed = true;
         bcVisualizer.CheckCapturePoint();
+        if(Time::time-lastClick <= doubleClickSpeed) { // double click
+            bcVisualizer.NewPoint(mouse.pos);
+            bcVisualizer.UpdateCurve();
+        }else{
+            lastClick = Time::time;
+        }
     }
     if(button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE) {
         mouse.leftPressed = false;
@@ -232,6 +268,6 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 	SCR_WIDTH = width;
 	SCR_HEIGHT = height;
 	glViewport(0, 0, width, height); //0,0 - left bottom
-    projection = glm::ortho(0.0f,SCR_WIDTH,SCR_HEIGHT,0.0f);
-    shader_viewpoint_callback();
+	projection = glm::ortho(0.0f,SCR_WIDTH,SCR_HEIGHT,0.0f);
+	shader_viewpoint_callback();
 }

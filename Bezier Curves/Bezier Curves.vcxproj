@@ -27,6 +27,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\BezierCurve.h" />
+    <ClInclude Include="include\Shader.h" />
+    <ClInclude Include="include\Time.h" />
+    <ClInclude Include="include\VAO.h" />
+    <ClInclude Include="include\VBO.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
@@ -84,6 +88,10 @@
     <IncludePath>G:\Prog\Other\Cpp\External Libraries\OpenGL;$(IncludePath)</IncludePath>
     <LibraryPath>G:\Prog\Other\Cpp\External Libraries\OpenGL;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <IncludePath>G:\Prog\Other\Cpp\External Libraries\OpenGL;$(IncludePath)</IncludePath>
+    <LibraryPath>G:\Prog\Other\Cpp\External Libraries\OpenGL;$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -135,12 +143,14 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>opengl32.lib;glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

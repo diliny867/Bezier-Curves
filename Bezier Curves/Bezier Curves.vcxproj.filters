@@ -16,6 +16,9 @@
     <Filter Include="Source Files\GL">
       <UniqueIdentifier>{fecc978d-f755-4f64-894a-24a1631a81f9}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\GL">
+      <UniqueIdentifier>{1634d2d5-daae-4259-b842-d0e3d3674e57}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="G:\Prog\Other\Cpp\External Libraries\OpenGL\glad.c">
@@ -37,6 +40,18 @@
   <ItemGroup>
     <ClInclude Include="include\BezierCurve.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Shader.h">
+      <Filter>Header Files\GL</Filter>
+    </ClInclude>
+    <ClInclude Include="include\VAO.h">
+      <Filter>Header Files\GL</Filter>
+    </ClInclude>
+    <ClInclude Include="include\VBO.h">
+      <Filter>Header Files\GL</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Time.h">
+      <Filter>Header Files\GL</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
