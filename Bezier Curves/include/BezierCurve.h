@@ -7,11 +7,8 @@
 #include <vector>
 
 
-glm::vec2 Lerp(const glm::vec2 p1,const glm::vec2 p2,const float t) {
-    glm::vec2 ans;
-    ans.x = p1.x + (p2.x-p1.x)*t;
-    ans.y = p1.y+(ans.x-p1.x)*((p2.y-p1.y)/(p2.x-p1.x));
-    return ans;
+inline glm::vec2 Lerp(const glm::vec2 p1, const glm::vec2 p2, const float t) {
+    return p1 + (p2-p1)*t;
 }
 class BezierCurve {
 private:

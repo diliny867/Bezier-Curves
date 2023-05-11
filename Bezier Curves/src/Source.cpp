@@ -37,14 +37,11 @@ public:
 };
 Mouse mouse(SCR_WIDTH/2.0f,SCR_HEIGHT/2.0f);
 
-//BezierCurve bezierCurve;
-//GLuint bezier_vbo;
-
 class BezierCurveVisualizer {
-	GLuint bc_vbo;
-	GLuint bc_vao;
-	GLuint points_vbo;
-	GLuint points_vao;
+	GLuint bc_vbo = 0;
+	GLuint bc_vao = 0;
+	GLuint points_vbo = 0;
+	GLuint points_vao = 0;
 public:
 	BezierCurve bezierCurve;
 	void Init() {
@@ -71,7 +68,7 @@ public:
         bezierCurve.RecalculateLine();
         VBO::setData(bc_vbo,sizeof(glm::vec2)*bezierCurve.linePoints.size(),bezierCurve.linePoints.data(),GL_STATIC_DRAW);
     }
-    void Draw(const Shader& lineShader,const Shader& pointShader) {
+    void Draw(const Shader& lineShader,const Shader& pointShader) const {
         VAO::bind(points_vao);
         pointShader.use();
         glPointSize(5);
@@ -167,19 +164,6 @@ int main() {
 
     bcVisualizer.Init();
 
-    //bezierCurve.points.push_back({100/800.0f*2.0f-1.0f,450/600.0f*2.0f-1.0f});
-    //bezierCurve.points.push_back({150/800.0f*2.0f-1.0f,480/600.0f*2.0f-1.0f});
-    //bezierCurve.points.push_back({210/800.0f*2.0f-1.0f,450/600.0f*2.0f-1.0f});
-    //bezierCurve.points.push_back({040/800.0f*2.0f-1.0f,200/600.0f*2.0f-1.0f});
-    //bezierCurve.points.push_back({340/800.0f*2.0f-1.0f,490/600.0f*2.0f-1.0f});
-    //bezierCurve.RecalculateLine();
-    //
-    //VBO::generate(bezier_vbo, sizeof(glm::vec2)*bezierCurve.linePoints.size(),bezierCurve.linePoints.data(), GL_STATIC_DRAW);
-    //VBO::bind(bezier_vbo);
-    //GLuint bezier_vao;
-    //VAO::generate(bezier_vao);
-    //VAO::bind(bezier_vao);
-    //VAO::addAttrib(bezier_vao, 0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
     lineShader.use();
 
     while (!glfwWindowShouldClose(window)) {
@@ -234,11 +218,6 @@ void mouse_scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
     if(glfwGetKey(window,GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
         bcVisualizer.bezierCurve.SetPrecision(bcVisualizer.bezierCurve.GetPrecision()*(1+0.1f*yoffset));
         bcVisualizer.bezierCurve.RecalculateLine();
-
-        //bezierCurve.SetPrecision(bezierCurve.GetPrecision()*(1+0.1f*yoffset));
-        ////std::cout<<bezierCurve.GetPrecision()<<std::endl;
-        //bezierCurve.RecalculateLine();
-        //VBO::setData(bezier_vbo,sizeof(glm::vec2)*bezierCurve.linePoints.size(),bezierCurve.linePoints.data(),GL_STATIC_DRAW);
     }
 }
 
